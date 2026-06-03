@@ -14,3 +14,32 @@ def save_tasks(tasks,file_path='data/tasks.json'):
     with open(file_path,'w')as file:
         json.dump(tasks,file,indent=4)
 
+def load_study_history(filepath='data/study_history.json'):
+    if not os.path.exists(filepath):
+        return []
+    with open(filepath,'r') as file:
+        return json.load(file)
+def save_study_session(duration):
+    history=load_study_history()
+    history.append({
+        "duration":duration
+    })
+    with open("data/study_history.json",'w') as file:
+        json.dump(history,file,indent=4)
+notes_file="data/notes.json"
+def load_notes():
+    if not os.path.exists(notes_file):
+        return[]
+    with open(notes_file,'r') as file:
+        return json.load(file)
+def save_note(notes):
+   with open(notes_file,'w') as file:
+       json.dump(notes,file,indent=4) 
+def load_assignment():
+    if not os.path.exists("data/assignment.json"):
+        return[]
+    with open("data/assignment.json",'r') as file:
+        return json.load(file)
+def save_assignment(assignments):
+    with open("data/assignment.json",'w') as file:
+        json.dump(assignments,file,indent=4)
