@@ -1,1 +1,27 @@
-[]
+[
+    {
+        "title": "Python OOP Project",
+        "due_date": "10/06/2026",
+        "completed": true
+    },
+    {
+        "title": "Database Management Assignment",
+        "due_date": "12/06/2026",
+        "completed": true
+    },
+    {
+        "title": "Machine Learning Research",
+        "due_date": "15/06/2026",
+        "completed": false
+    },
+    {
+        "title": "Data Structures Practice",
+        "due_date": "18/06/2026",
+        "completed": true
+    },
+    {
+        "title": "Flask Web App Development",
+        "due_date": "20/06/2026",
+        "completed": true
+    }
+]

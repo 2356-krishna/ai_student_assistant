@@ -43,3 +43,51 @@ def load_assignment():
 def save_assignment(assignments):
     with open("data/assignment.json",'w') as file:
         json.dump(assignments,file,indent=4)
+def total_study_sessions():
+    history=load_study_history()
+    return len(history)
+def total_study_time():
+    history=load_study_history()
+    total_time=sum(session['duration'] for session in history)
+    return total_time
+def total_notes_count():
+    history=load_notes()
+    return len(history)
+def total_assignments_count():
+    history=load_assignment()
+    return len(history)
+def pending_assignments():
+    history=load_assignment()
+    count=0
+    for assign in history:
+        if assign["completed"]==False:
+            count+=1
+    return count
+def completed_assignments():
+    history=load_assignment()
+    count=0
+    for assign in history:
+        if assign["completed"]==True:
+            count+=1
+    return count
+def load_users():
+    file="data/users.json"
+    if not os.path.exists(file):
+        print("no file exists")
+    else: 
+       with open(file,'r') as file:
+          return json.load(file) 
+
+def save_users(user,file_path='data/users.json'):
+    if not os.path.exists(file_path):
+        print("file not found")
+    else:
+      with open(file_path,'w') as file:
+        json.dump(user,file,indent=4)
+
+    
+
+
+
+
+
