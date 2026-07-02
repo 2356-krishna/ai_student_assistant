@@ -1,1 +1,80 @@
-[]
+[
+    {
+        "Title": "Complete Python Project",
+        "Priority": "high",
+        "Deadline": "29/06/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Revise DBMS Unit 2",
+        "Priority": "medium",
+        "Deadline": "30/06/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Upload Project to GitHub",
+        "Priority": "high",
+        "Deadline": "28/06/2026",
+        "Completed": true
+    },
+    {
+        "Title": "Practice DSA for 1 Hour",
+        "Priority": "high",
+        "Deadline": "27/06/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Read AI & ML Notes",
+        "Priority": "low",
+        "Deadline": "02/07/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Prepare for Presentation",
+        "Priority": "medium",
+        "Deadline": "01/07/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Complete Assignment Report",
+        "Priority": "high",
+        "Deadline": "27/06/2026",
+        "Completed": true
+    },
+    {
+        "Title": "Watch Python OOP Tutorial",
+        "Priority": "low",
+        "Deadline": "03/07/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Organize Study Notes",
+        "Priority": "low",
+        "Deadline": "04/07/2026",
+        "Completed": true
+    },
+    {
+        "Title": "Update LinkedIn Profile",
+        "Priority": "medium",
+        "Deadline": "30/06/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Prepare Resume",
+        "Priority": "high",
+        "Deadline": "05/07/2026",
+        "Completed": false
+    },
+    {
+        "Title": "Practice Aptitude Questions",
+        "Priority": "medium",
+        "Deadline": "02/07/2026",
+        "Completed": true
+    },
+    {
+        "Title": "python project",
+        "Priority": "high",
+        "Completed": true,
+        "Deadline": "30/06/2026"
+    }
+]

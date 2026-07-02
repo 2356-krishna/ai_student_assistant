@@ -6,9 +6,18 @@ from colorama import Fore,init
 from utils.helperfunctio import load_study_history,save_study_session,load_notes,save_note
 from utils.helperfunctio import load_assignment,save_assignment
 from utils.helperfunctio import total_study_sessions,total_study_time,total_notes_count,total_assignments_count,pending_assignments,completed_assignments
-from utils.helperfunctio import load_users,save_users,save_goals,load_goals,save_pomodoro,load_pomodoro,load_streaks,save_streak
+from utils.helperfunctio import load_users,save_users,save_goals,load_goals,save_pomodoro,load_pomodoro,load_streaks,save_streak,load_tasks,save_tasks
+from utils.helperfunctio import high_priority_tasks,low_priority_tasks,medium_priority_tasks,total_tasks,completed_tasks,pending_tasks,highprior_andnotcompleted,nothighandnotcompleted
 from datetime import datetime,timedelta
 import matplotlib.pyplot as plt
+from reportlab.platypus import *
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import (
+    PageBreak
+)
+from openpyxl import Workbook
+import zipfile
+from utils.helperfunctio import load_Settings,save_settings
 init(autoreset=True)
 current_user='krishna'
 def pasrse_date(date_string):
@@ -80,7 +89,10 @@ def achievements():
         else:
             print(f"{Fore.RED}Invalid choice")
 def study_timer(current_username):
-    minutes=int(input(Fore.CYAN+"Enter how many minutes you want to study : "))
+    load=load_Settings(current_username)
+    minutes=int(input(Fore.CYAN+"Enter how many minutes you want to study or press enter to default for default_study_time : "))
+    if minutes=="":
+        minutes=load[0]['default_study_timer']
     print(f"{Fore.CYAN}study session started for {minutes} minutes")
     time.sleep(minutes)
     print(Fore.GREEN+"congratulations !")
@@ -275,10 +287,22 @@ def export_study_history(current_username):
     history=load_study_history(current_username)
     with open(f"exports/{current_username}/study_history.csv",'w',newline='')as file:
         writer=csv.writer(file)
-        writer.writerow(['duration'])
+        writer.writerow(['date','duration'])
         for session in history:
-            writer.writerow([session['duration']])
+            writer.writerow([session['date'],session['duration']])
     print(f"{Fore.GREEN} Study history exported successfully to exports/study_history.csv")
+def export_tasks(current_username):
+    load=load_tasks(current_username)
+    file=f"exports/{current_username}/tasks.csv"
+    with open(file,'w',newline='')as fi:
+       writer=csv.writer(fi)
+       writer.writerow(['Title','Priority','Deadline','Completed'])
+       for task in load:
+           writer.writerow([task['Title'],task['Priority'],task['Deadline'],task['Completed']])
+    print(f"{Fore.GREEN} Tasks exported successfully to exports/{current_username}/study_history.csv")
+
+        
+        
 def export_menu():
     global current_user
     while(True):
@@ -286,7 +310,8 @@ def export_menu():
         print(f"{Fore.MAGENTA}1. export notes")
         print(f"{Fore.MAGENTA}2. export assignment")
         print(f"{Fore.MAGENTA}3. export study history")
-        print(f"{Fore.RED}4. Back")
+        print(f"{Fore.MAGENTA}4. export Tasks")
+        print(f"{Fore.RED}5. Back")
         choice = input(Fore.CYAN+"Enter choice: ")
         if choice == "1":
             export_notes(current_user)
@@ -294,7 +319,9 @@ def export_menu():
             assignment_export(current_user)
         elif choice == '3':
             export_study_history(current_user)
-        elif choice == "4":
+        elif choice=='4':
+            export_tasks(current_user)
+        elif choice == "5":
             break
         else:
             print("Invalid choice.")
@@ -318,10 +345,11 @@ def view_goal(current_username):
     load=load_goals(current_username)
     if not load:
         return Fore.RED+"please add goal in productivity features"
-    return f"{load[0]['goals']} minutes"
+    return int(load[0]['goals'])
 def pomodoro(current_username):
-    study_minutes=int(input(Fore.CYAN+"Enter how many minutes you want to study or default 25 : ") or 25)
-    break_time=int(input(Fore.CYAN+"Enter how many minutes of break you want  or default 5 : ")or 5)
+    setting=load_Settings(current_username)
+    study_minutes=int(input(Fore.CYAN+"Enter how many minutes you want to study or press enter for default  : ") or setting[0]['pomodoro'])
+    break_time=int(input(Fore.CYAN+"Enter how many minutes of break you want  or default 5 : ")or load[0]['break_time'])
     total_seconds=study_minutes
     while(total_seconds):
         minutes=total_seconds//60
@@ -425,6 +453,7 @@ def productivity_menu():
         if choice=='1':
             set_goals(current_user)
         elif choice=='2':
+
             pomodoro(current_user)
         elif choice=='3':
             view_progress(current_user)
@@ -433,33 +462,12 @@ def productivity_menu():
         else:
             print(Fore.RED+"Invalid choice")
     
+def progress_bar(percentage):
+    filled = int(percentage // 10)
+    empty = 10 - filled
 
-def dashboard():
-    global current_user
-    print(f"\n{Fore.BLUE}===== DASHBOARD =====")
-    print(f"{Fore.YELLOW}Total Study Sessions: {Fore.WHITE}{total_study_sessions(current_user)}")
-    print(f"{Fore.YELLOW}Total Study Time: {Fore.WHITE}{total_study_time(current_user)} minutes")
-    
-    print(f"{Fore.YELLOW}Daily goal: {Fore.WHITE}{view_goal(current_user)} ")
-    progress(current_user)
-    print(f"{Fore.YELLOW}Current Streak: {Fore.WHITE} {view_streak(current_user)} days")
-    
-    
+    return "█" * filled + "░" * empty
 
-    print(f"{Fore.YELLOW}Total Notes: {Fore.WHITE}{total_notes_count(current_user)}")
-    print(f"{Fore.YELLOW}Total Assignments: {Fore.WHITE}{total_assignments_count(current_user)}")
-    # if pending_assignments()<1:
-    #     print(f"{Fore.GREEN}Great job! You have no pending assignments.")
-    # elif pending_assignments()==total_assignments_count():
-    #     print(f"{Fore.RED}You have a lot of pending assignments. Try to complete them soon!")
-    print(f"{Fore.YELLOW}Pending Assignments: {Fore.WHITE}{pending_assignments(current_user)}")
-    print(f"{Fore.GREEN}Completed Assignments: {Fore.WHITE}{completed_assignments(current_user)}")
-    print(f"{Fore.RED}Overdue Assignments: {Fore.WHITE}{overdue_count(current_user)}")
-
-    completion_rate= (completed_assignments(current_user) / total_assignments_count(current_user) * 100) if total_assignments_count(current_user) > 0 else 0
-    print(f"{Fore.CYAN}Assignment Completion Rate: {Fore.WHITE}{completion_rate}%")
-    if completion_rate>=80:
-        print(Fore.GREEN+"Excellent work! Your assignment completion rate is high.")
 
 def search_notes(current_username):
     note=load_notes(current_username)
@@ -477,7 +485,7 @@ def search_notes(current_username):
 def search_assignments(current_username):
     data=load_assignment(current_username)
     keyword=input(Fore.CYAN+"enter title of assignment to search in assignments")
-    result=[n for n in data if keyword in n]
+    result=[n for n in data if keyword.lower() in n['title'].lower()]
     if result:
         print(f"{Fore.GREEN} found {len(keyword)} matches in assignment")
         for i,assi in enumerate(result,start=1):
@@ -496,6 +504,17 @@ def completed1_assignmments(current_username):
     for a in assign:
         if a['completed']:
             print(f"{Fore.GREEN}Completed Assignment: {a['title']} | DUE: {a['due_date']}")
+def search_tasks(current_username):
+    load=load_tasks(current_username)
+    keyword=input("Enter task title to search in tasks: ")
+    result=[n for n in load if keyword.lower()in n['Title'].lower()]
+    if result:
+        print(f"{Fore.MAGENTA}==== Matching keywords ====")
+        for k in result:
+            print(f"""Title: {k['Title']}
+Priority: {k['Priority']}
+Deadline: {k['Deadline']}
+Completed: {k['Completed']}""")
    
 def search_menu():
   global current_user
@@ -504,19 +523,22 @@ def search_menu():
     print(f"\n{Fore.BLUE}===== SEARCH MENU =====")
     print(f"{Fore.MAGENTA} 1. Seacrh notes")
     print(f"{Fore.MAGENTA} 2. Search assignments")
-    print(f"{Fore.MAGENTA} 3. VIEW PENDING ASSIGNMENTS")
-    print(f"{Fore.MAGENTA} 4. VIEW COMPLETED ASSIGNMENTS")
-    print(f"{Fore.RED} 5. Back")
+    print(f"{Fore.MAGENTA} 3. Search Tasks")
+    print(f"{Fore.MAGENTA} 4. VIEW PENDING ASSIGNMENTS")
+    print(f"{Fore.MAGENTA} 5. VIEW COMPLETED ASSIGNMENTS")
+    print(f"{Fore.RED} 6. Back")
     choice=input(Fore.CYAN+"Enter your choice: ")
     if choice=="1":
         search_notes(current_user)
     elif choice=='2':
         search_assignments(current_user)
     elif choice=='3':
-        pending1_assignments(current_user)
+        search_tasks(current_user)
     elif choice=='4':
+        pending1_assignments(current_user)
+    elif choice=='5':
         completed1_assignmments(current_user)
-    elif choice=="5":
+    elif choice=="6":
         print(f"{Fore.BLUE} returning to main menu...")
         break
     else:
@@ -601,6 +623,7 @@ def create_user_files(username):
     os.mkdir(
         f"data/{username}"
     )
+
     files=['assignment.json','notes.json','tasks.json','study_history.json','study_goals.json','pomodoro.json','streak.json','badges.json']
     expor=['assignment.csv','notes.csv','studyhistory.csv','tasks.csv']
     for file in files:
@@ -645,7 +668,8 @@ def login():
             global current_user
             current_user=username
             print(Fore.GREEN+"login successfully") 
-            print(f"\n {Fore.GREEN} Welcome : {username}")
+            setting=load_Settings(current_user)
+            print(f"\n{Fore.YELLOW}Welcome : {setting[0]['display_name']}")
             return True
     print(Fore.RED+"Invalid crendtials")    
     return False   
@@ -704,13 +728,21 @@ def account_details():
         f"{Fore.GREEN}Username: {current_user}"
     )
 def setting_menu():
+  global current_user
   while(True):
+    load=load_Settings(current_user)
     print(Fore.BLUE+"====== Settings ======")
     print(Fore.MAGENTA+"1. Change username ")
     print(Fore.MAGENTA+"2. Change Password ")
     print(Fore.MAGENTA+"3. Delete account")
     print(Fore.MAGENTA+"4. View account details")
-    print(Fore.MAGENTA+"5. exit")
+    print(Fore.MAGENTA+"5. Change dispaly name")
+    print(Fore.MAGENTA+"6. change default study")
+    print(Fore.MAGENTA+"7. change default pomodoro timer")
+    print(Fore.MAGENTA+"8. change default break time in pomodoro")
+    print(Fore.MAGENTA+"9. change notifications settings")
+
+    print(Fore.MAGENTA+"10. exit")
     choice=input(Fore.CYAN+"Enter your choice")
     if choice=='1':
         change_username()
@@ -722,9 +754,185 @@ def setting_menu():
     elif choice=='4':
         account_details()
     elif choice=='5':
+        load[0]['display_name']=input("Enter display name : ")
+    elif choice=='6':
+        load[0]['default_study_timer']=input("Enter study time you want to set as default : ")
+    elif choice=='7':
+        load[0]['pomodoro']=input("Enter pomodoro timer you want to set as default : ")
+    elif choice=='8':
+        load[0]['break_time']=input("Enter break time you want to set as default : ")
+    elif choice=='9':
+       while(True):
+        notification=input("Do you want notifications in dashboard yes or no ")
+        if notification.lower()=='yes':
+           load[0]['show_notifications']=True
+           print(Fore.GREEN+"Notification settings changed sucessfully")
+
+        elif notification.lower=='no':
+           load[0]['show_notifications']=False
+           print(Fore.GREEN+"Notification settings changed sucessfully")
+
+        else:
+            print("Invalid choice")
+            
+        
+    elif choice=='10':
         break
     else:
         print(Fore.RED+"Invaid choice")
+
+
+def add_tasks(current_username):
+    load=load_tasks(current_username)
+    title=input("Enter title of the task: ")
+    priority=input(Fore.CYAN+"Enter priority of the task high,low ,medium:")
+    completed=False
+    deadline=input(Fore.CYAN+'Enter deadline of the task (%d/%m/%y): ')
+    load.append({
+        "Title":title,
+        "Priority":priority,
+        "Completed":completed,
+        "Deadline":deadline
+    })
+    save_tasks(load,current_username)
+def view_tasks(current_username):
+    load=load_tasks(current_username)
+    for i,tasks in enumerate(load,start=1):
+        status="completed✅" if tasks['Completed'] else "Pending"
+        print(Fore.YELLOW+f"{i}. Title:{tasks['Title']} \n Priority:{tasks['Priority']} \n {tasks['Deadline']} \n Status:{status}")
+def delete_tasks(current_username):
+    view_tasks(current_username)
+    load=load_tasks(current_username)
+    try:
+       choice=int(input(Fore.CYAN+"Enter which task you want to delete " ))
+       if choice>=1 and choice<=len(load):
+         load.pop(choice-1)
+         save_tasks(load,current_username)
+         print(Fore.GREEN+"tasks deleted sucessfully")
+       else:
+        print(Fore.RED+"invalid choice")
+    except ValueError:
+      print(ValueError)
+def mark(current_username):
+    load=load_tasks(current_username)
+    if not load:
+        print("no tasks found")
+    view_tasks(current_username)
+    try: 
+        choice=int(input(Fore.CYAN+"Enter no which task you to mark as completed : "))
+        if choice>=1 and choice<=len(load):
+          load[choice-1]['Completed']=True
+          save_tasks(load,current_username)
+        else:
+          print("invalid choice")
+    except ValueError:
+        print("invalid choice")
+def filter_task(current_username):
+    load=load_tasks(current_username)
+    if not load:
+        return
+    high=[]
+    low=[]
+    medium=[]
+    pending=[]
+    completed=[]
+    for task in load:
+        if task['Priority'].lower()=='high':
+            high.append(task)
+        elif task['Priority'].lower()=='medium':
+            medium.append(task)
+        elif task['Priority']=='low':
+            low.append(task)
+        if task['Completed']:
+            completed.append(task)
+        else:
+            pending.append(task)
+    while(True):
+      print("======  Filter menu  ======")
+      print(Fore.MAGENTA+"1. Filter tasks basis on high priority")
+      print(Fore.MAGENTA+"2. Filter tasks basis on medium priority")
+      print(Fore.MAGENTA+"3. Filter tasks basis on low priority")
+      print(Fore.MAGENTA+"4. Filter tasks basis on completed priority")
+      print(Fore.MAGENTA+"5. Filter tasks basis on pending priority")
+      print(Fore.MAGENTA+"6. exit the filter feature")
+      choice=input(Fore.CYAN+"Please enter how you want filter to task : ")
+      if choice=='1' or choice.lower()=='high':
+         print("===== High priority tasks =====")
+         if not high:
+              print(Fore.RED+"No high priority tasks")
+         else:
+          for i,tasks in enumerate(high,start=1):
+              status="completed✅" if tasks['Completed'] else "Pending"
+              print(Fore.YELLOW+f"{i}. Title:{tasks['Title']} \n Priority:{tasks['Priority']} \n {tasks['Deadline']} \n Status:{status}")
+      elif choice=='2' or choice.lower()=='medium':
+         print("===== Medium priority tasks =====")
+         if not medium:
+              print(Fore.RED+"No Medium priority tasks")
+         else:
+          for i,tasks in enumerate(medium,start=1):
+              status="completed✅" if tasks['Completed'] else "Pending"
+              print(Fore.YELLOW+f"{i}. Title:{tasks['Title']} \n Priority:{tasks['Priority']} \n {tasks['Deadline']} \n Status:{status}")
+      elif choice=='3' or choice.lower()=='low':
+         print("===== Low priority tasks =====")
+         if not low:
+          print(Fore.RED+"NO low priority tasks")
+         else:
+
+          for i,tasks in enumerate(low,start=1):
+              status="completed✅" if tasks['Completed'] else "Pending"
+              print(Fore.YELLOW+f"{i}. Title:{tasks['Title']} \n Priority:{tasks['Priority']} \n {tasks['Deadline']} \n Status:{status}")
+      elif choice=='4' or choice.lower()=='pending':
+         print("===== Completed tasks =====")
+         if not completed:
+              print(Fore.RED+"No Completed tasks")
+         else:
+          for i,tasks in enumerate(completed,start=1):
+              status="completed✅" if tasks['Completed'] else "Pending"
+              print(Fore.YELLOW+f"{i}. Title:{tasks['Title']} \n Priority:{tasks['Priority']} \n {tasks['Deadline']} \n Status:{status}")
+      elif choice=='5' or choice.lower()=='pending':
+        print("===== Pending tasks =====")
+        if not pending:
+              print(Fore.RED+"No Pending tasks")
+        else:
+          for i,tasks in enumerate(pending,start=1):
+              status="completed✅" if tasks['Completed'] else "Pending"
+              print(Fore.YELLOW+f"{i}. Title:{tasks['Title']} \n Priority:{tasks['Priority']} \n {tasks['Deadline']} \n Status:{status}")
+      elif choice=='6'or choice=='back':
+          break
+      else:
+          print("invalid value")
+          
+def tasks(current_username):
+    while(True):
+       print(Fore.BLUE+"=======  Tasks menu  =======")
+       print(Fore.MAGENTA+"1. Add tasks")
+       print(Fore.MAGENTA+"2. Delete tasks")
+       print(Fore.MAGENTA+"3. View tasks")
+       print(Fore.MAGENTA+"4. Mark tasks complete")
+       print(Fore.MAGENTA+"5. Filter tasks")
+       print(Fore.MAGENTA+"6. Back")
+       choice=input("Enter your choice: ")
+       if choice=='1':
+           add_tasks(current_username)
+       elif choice=='2':
+           delete_tasks(current_username)
+       elif choice=='3':
+           view_tasks(current_username)
+       elif choice=='4':
+           mark(current_username)
+       elif choice=='5':
+           filter_task(current_username)
+       elif choice=='6':
+           break
+       else:
+           print(Fore.RED+"Invalid choice")
+
+
+
+
+
+
+    
 
 
 def productivity_score(current_username):
@@ -732,7 +940,7 @@ def productivity_score(current_username):
     streak=load_streaks(current_username)
     completed=sum(1 for a in load if a['completed'])
     score=completed*10+streak[0]['streaks']*5
-    print(f"\n🎖️ Productivity score: {score}")
+    return  score
 
 def recommendation(current_username):
     load_assignmen=load_assignment(current_username)
@@ -761,9 +969,15 @@ def notification(current_username):
     load=load_assignment(current_username)
     pending=sum(1 for a in load if a['completed'])
     print(Fore.BLUE+"======== Notifications ========")
+    print(f"{Fore.RED} You have {highprior_andnotcompleted(current_username)} High Priority pending tasks ")
+    print(f"other pending tasks are : {nothighandnotcompleted(current_username)}")
+
     print(f"{Fore.RED} You have {pending} pending assignmemnts")
     Streak=load_streaks(current_username)
     print(f"{Fore.YELLOW} Current streak {Streak[0]['streaks']}")
+
+    
+            
 def weekly_summary(current_username):
     load_assignmen=load_assignment(current_username)
     load_study=load_study_history(current_username)
@@ -787,8 +1001,7 @@ def weekly_summary(current_username):
     print(Fore.YELLOW+f"Total week study sessions :  {session}")
     print(Fore.YELLOW+f"Total week study minutes :  {min}")
     print(f"{Fore.GREEN} Completed assignments : {completed}")
-    print(f"{Fore.RED} Pending assignments : {pending}")
-    
+    print(f"{Fore.RED} Pending assignments : {pending}") 
 def insights_menu():
     global current_user
     while(True):
@@ -799,7 +1012,7 @@ def insights_menu():
         print(Fore.MAGENTA+"5. Back")        
         choice=input("Enter your choice : ")
         if choice=='1':
-            productivity_score(current_user)
+            print(f"{Fore.YELLOW}productivity_score: {productivity_score(current_user)}")
         elif choice=='2':
             recommendation(current_user)
         elif choice=='3':
@@ -811,11 +1024,212 @@ def insights_menu():
         else:
             print(Fore.RED+"Invalid choice")
 
+def pdf_Report(current_username):
+    file_path=f"data/{current_username}/productivity_Report.pdf"
+    pdf=SimpleDocTemplate(file_path)
+    styles=getSampleStyleSheet()
+    content=[]
+   
+    title1=Paragraph(
+        """<b>
+        =====
+        Ai Student Assistant report
+        =====</b>""",
+        styles["Title"]
+    )
+    content.append(title1)
+    content.append(Spacer(1,12))
+    content.append(Paragraph(f"<b>Generated on : </b>{(datetime.now().date()).strftime("%d/%m/%Y")}",styles['BodyText']))
+    content.append(Spacer(1,10))
+    content.append(Paragraph(f"<b>username: </b>{current_username} ",styles['BodyText']))
+    content.append(Spacer(1,10))
+    title2=Paragraph(
+        """<b>
+        ===========
+              STUDY STATISTICS
+        ===========</b>""",
+        styles["Title"]
+    )
+    content.append(title2)
+    content.append(Spacer(1,12))
+    history=load_study_history(current_username)
+    assignments=load_assignment(current_username)
+    Streak=load_streaks(current_username)
+    study_time=sum(session['duration'] for session in history)
+    completed=sum(1 for a in assignments if a['completed'])
+    pending=len(assignments)-completed
+    Streaks=Streak[0]['streaks']
+
+    pdf_text=[
+       
+
+       f"<b>Total Study Time: </b>{study_time}mins",
+
+       f"<b> Total Study Sessions: </b>{len(history)}"
+  
+       f"<b>Current Streak: </b>{Streaks}",
+       
+    ]
+    for con in pdf_text:
+      content.append(Paragraph(con,styles['BodyText']))
+      content.append(Spacer(1,10))
+    choice=input(Fore.MAGENTA+"Do you want graph and charts in pdf Yes or No: ")
+    if choice.lower()=='yes':
+        study_graph(current_username)
+        assignment_chart(current_username)
+        content.append(Image(f"data/{current_username}/study_graph.png",
+                         width=400,
+                         height=250))
+        content.append(PageBreak())
+    title3=Paragraph(
+        f"""<b>
 
 
+
+
+       ========
+        ASSIGNMENT SUMMARY
+       ========</b>""",
+        styles["Title"]
+    )
+    content.append(title3)
+    content.append(Spacer(1,12))
+    Assign_text=[
+       
+      f"<b>Completed Assignments: </b>{completed}",
+       
+       f"<b>Pending Assignments:</b>{pending}",
+       
+    ]
+    content.append(Paragraph(Assign_text[0],styles['BodyText']))
+    content.append(Spacer(1,10))
+    content.append(Paragraph(Assign_text[1],styles['BodyText']))
+    content.append(Spacer(1,10))
+    if choice.lower()=='yes':
+       content.append(Image(f"data/{current_username}/assignment_chart.png",
+                         width=350,
+                         height=250))
+    title6=Paragraph( f"""<b>
+
+
+
+
+       ========
+        TASKS SUMMARY
+       ========</b>""",styles['Title'])
+    content.append(title6)
+    content.append(Spacer(1,10))
+    task_text=[f"Total tasks: {total_tasks(current_username)}",f"Completed Task : {completed_tasks(current_username)}",f"Pending Task: {pending_tasks(current_username)}",f"High Priority tasks: {high_priority_tasks(current_username)}"]
+    for text in task_text:
+        content.append(Paragraph(text,styles['BodyText']))
+        content.append(Spacer(1,10))
+    title4=Paragraph(
+        """<b>
+       -------------
+                  PRODUCTIVITY SCORE
+       ------------</b>""",
+        styles["Title"]
+    )
+    content.append(title4)
+    content.append(Spacer(1,12))
+    score=productivity_score(current_username)
+    content.append(Paragraph(f"Productivity Score: {score}",styles['BodyText']))
+    content.append(Spacer(1,10))
+    title5=Paragraph(
+        """<b>
+       -------------
+               ACHIEVEMENTS 
+       -------------
+       </b>""",
+        styles["Title"]
+    )
+    content.append(title5)
+    content.append(Spacer(1,12))
+    loa=get_badges(current_username)
+    
+    for badge in loa:
+        content.append(Paragraph(f"{badge}"))
+        content.append(Spacer(1,10))
+    title1=Paragraph(
+        """<b>
+       ==================================
+        Generated by Ai Student Assistant
+       ==================================</b>""",
+        styles["Title"]
+    )
+    content.append(title1)
+    content.append(Spacer(1,12))
+    
+    pdf.build(content)
+    print(Fore.GREEN+"Pdf Report Generated")
+    print(f"Saved at : {file_path}")
     
     
+def import_tasks(current_username):
+    load=[]
+    with open(f"exports/{current_username}/tasks.csv",'r') as file:
+        read=csv.DictReader(file)
+        for row in read:
+            load.append(row)
+    save_tasks(load,current_username)
+    print(Fore.GREEN+"Tasks imported sucessfully")
+
+def import_notes(current_username):
+    load=[]
+    with open(f"export/{current_username}/notes.csv") as file:
+        read=csv.DictReader(file)
+        for note in read:
+            load.append(note)
+    save_note(load,current_username)
+    print(Fore.GREEN+"Notes imported sucessfully")
+
+def import_assignments(current_username):
+    load=[]
+    with open(f"exports/{current_username}/assignment.csv") as f:
+        read=csv.DictReader(f)
+        for assign in read:
+            load.append(assign)
+    save_assignment(load,current_username)
+    print(Fore.GREEN+"assignment imported sucessfully")
+
+def import_study(current_username):
+    load=[]
+    with open(f"exports/{current_username}/study_history.csv") as f:
+        read=csv.DictReader(f)
+        for study in read:
+            load.append(study)
+    save_study_session(load,current_username)
+    print(Fore.GREEN+"Study imported sucessfully")
+def import_menu():
+    global current_user
+    while(True):
+        print(Fore.MAGENTA+"1. Import tasks")
+        print(Fore.MAGENTA+"2. Import notes")
+        print(Fore.MAGENTA+"3. Import assignment")
+        print(Fore.MAGENTA+"4. Import study sessions")
+        print(Fore.MAGENTA+"5. Back")
+        choice=input(Fore.CYAN+"Enter your choice")
+        if choice=='1':
+            import_tasks(current_user)
+        elif choice=='2':
+            import_notes(current_user)
+        elif choice=='3':
+            import_assignments(current_user)
+        elif choice=='4':
+            import_study(current_user)
+        elif choice=='5':
+            break
+        else:
+            print(Fore.RED+"Invalid choice")
+
+        
     
+
+        
+
+
+        
+
             
 
 def auth():
@@ -829,6 +1243,10 @@ def auth():
         register()
     elif choice=='2':
         if login():
+            global current_user
+            load=load_Settings(current_user)
+            if load[0]['show_notifications']:
+                notification(current_user)
             return True
     elif choice=='3':
         return False
@@ -867,25 +1285,320 @@ def assignment_chart(current_username):
     plt.savefig(f"data/{current_username}/assignment_chart.png")
     print(f"Assignment chart uploaded in data/{current_username}/assignment_chart.png")
 
-def analytics_menu():
+
+
+def excel(current_username):
+    wb=Workbook()
+    sheet=wb.active
+    sheet.title="Study history"
+    sheet.append([
+        "Date",
+        "Duration"
+    ]) 
+    total_time=0
+    history=load_study_history(current_username)
+    for his in history:
+        total_time+=his['duration']
+        sheet.append([
+            his['date'],
+            his['duration']
+        ])
+    assignment_sheet=wb.create_sheet("Assignments")
+    assignment_sheet.append([
+            "Title",
+            "Due_date",
+            "Completed"
+        ])
+    assign=load_assignment(current_username)
+    for ass in assign:
+            assignment_sheet.append(
+[ass['title'],
+ ass['due_date'],
+ ass['completed']]
+            )
+    tasks=wb.create_sheet("Tasks")
+    tasks.append(["Title","Priority","completed","Deadline"])
+    load_task=load_tasks(current_username)
+    for tas in load_task:
+        tasks.append([tas['Title'],tas['Priority'],tas['Completed'],tas['Deadline']])
+    analytics=wb.create_sheet("Analytics")
+    analytics.append([
+            "Metric","Value"
+        ])
+    analytics.append(["study_sessons",len(history)])
+    analytics.append([
+    "Study Time",
+    total_time
+])
+    streak=load_streaks(current_username)
+
+    analytics.append([
+    "Current Streak",
+    streak[0]['streaks']
+])
+    score=productivity_score(current_username)
+    analytics.append([
+    "Productivity Score",
+     score
+])
+    file_path = (
+    f"data/{current_user}/"
+    "productivity_report.xlsx"
+)
+
+    wb.save(file_path)
+    print(Fore.GREEN+"Excel report Generated ✅")
+def reports_menu():
    global current_user
    while(True):
-    print(Fore.BLUE+"====== Analytics ======")
-    print(Fore.MAGENTA+"1. Study graph")
-    print(Fore.MAGENTA+"2. Assignment chart")
-    print(Fore.MAGENTA+"3. Back")
+    print(Fore.BLUE+"====== Reports ======")
+    print(Fore.MAGENTA+"1. Generate Study graph")
+    print(Fore.MAGENTA+"2. Generate Assignment chart")
+    print(Fore.MAGENTA+"3. Generate Pdf Report")
+    print(Fore.MAGENTA+"4. Generate Excel Report")
+    print(Fore.MAGENTA+"5. Back")
     choice=input(Fore.CYAN+"Enter your choice: ")
     if choice=='1':
         study_graph(current_user)
     elif choice=='2':
        assignment_chart(current_user)
     elif choice=='3':
+        pdf_Report(current_user)
+    elif choice=='4':
+        excel(current_user)
+    elif choice=='5':
         break
     else:
         print(Fore.RED+"Invalid choice")
+    
 
+def create_backup(current_username):
+    source_folder=f"data/{current_username}"
+    backupfolder=f"backups/{current_username}_backup.zip"
+    with zipfile.ZipFile(backupfolder,'w',zipfile.ZIP_DEFLATED) as zipf:
+        for root,dirs,files in os.walk(source_folder):
+          for file in files:
+            path=os.path.join(root,file)
+            arcname=os.path.relpath(path,source_folder)
+            zipf.write(path,arcname)
+    print(Fore.GREEN+"backup created succesfully")
+def restore_backup(current_username):
+    target_file=f"data/{current_username}"
+    backup_file=f"backups/{current_username}_backup.zip"
+    if not os.path.exists(backup_file):
+        print(f"{Fore.RED}backup_file not existed")
+        return
+    with zipfile.ZipFile(backup_file,'r') as zipf:
+        zipf.extractall(target_file)
+    print(Fore.GREEN+"backup restored")
+def backup_menu():
+    global current_user
+    print(Fore.BLUE+"======== BACKUP SYSTEM ========")
+    while(True):
+        print(Fore.MAGENTA+"1. Create backup")
+        print(Fore.MAGENTA+"2. Restore backup")
+        print(Fore.MAGENTA+"3. back")
+        choice=input(Fore.CYAN+"Enter your choice : ")
+        if choice=="1":
+            create_backup(current_user)
+        elif choice=="2":
+            restore_backup(current_user)
+        elif choice=="3":
+            break
+        else:
+            print(Fore.RED+"Invalid choice")
+import random
+def motivational_quotes():
+    quotes = [
+    "Discipline beats motivation.",
+    "Small progress is still progress.",
+    "Success starts with consistency.",
+    "Study today, succeed tomorrow.",
+    "Every expert was once a beginner.",
+    "Stay focused and never give up.",
+    "Dream big, work hard.",
+    "One chapter at a time.",
+    "Learning never goes to waste.",
+    "Keep showing up every day.",
+    "Hard work always pays off.",
+    "Your future is created today.",
+    "Progress, not perfection.",
+    "Success is earned, not given.",
+    "Believe in your potential.",
+    "Keep moving forward.",
+    "Make today count.",
+    "Consistency creates excellence.",
+    "Small efforts lead to big results.",
+    "Don't stop until you're proud.",
+    "Knowledge is your greatest investment.",
+    "Learn something new every day.",
+    "Stay hungry for knowledge.",
+    "Focus on improvement.",
+    "Be stronger than your excuses.",
+    "Push yourself beyond limits.",
+    "You are capable of amazing things.",
+    "The best investment is in yourself.",
+    "Action beats intention.",
+    "Success loves preparation.",
+    "Every day is a new opportunity.",
+    "Your habits shape your future.",
+    "Study with purpose.",
+    "A little progress every day adds up.",
+    "Be patient with your growth.",
+    "Work in silence, let success speak.",
+    "Stay disciplined even when it's hard.",
+    "You don't have to be perfect, just consistent.",
+    "Keep learning, keep growing.",
+    "Failure is a lesson, not the end.",
+    "Great things take time.",
+    "Never stop believing in yourself.",
+    "Every minute of study counts.",
+    "Start now, not later.",
+    "One task at a time.",
+    "Focus on what matters.",
+    "Turn dreams into goals.",
+    "Goals require action.",
+    "Learn, practice, improve.",
+    "Success is built daily.",
+    "Your future self will thank you.",
+    "The pain of discipline is temporary.",
+    "Keep your eyes on the goal.",
+    "Stay positive and productive.",
+    "Confidence comes from preparation.",
+    "Discipline creates freedom.",
+    "Never underestimate small efforts.",
+    "Keep building your future.",
+    "Success begins with self-belief.",
+    "Today's effort is tomorrow's success.",
+    "Stay committed to your goals.",
+    "The journey is worth it.",
+    "Learn from yesterday, improve today.",
+    "Consistency is your superpower.",
+    "You are stronger than your doubts.",
+    "Every accomplishment starts with a decision.",
+    "Focus creates results.",
+    "Work hard, stay humble.",
+    "Keep your momentum alive.",
+    "Nothing changes unless you do.",
+    "You can do difficult things.",
+    "Success comes to those who prepare.",
+    "Do something today your future self will appreciate.",
+    "Build habits that build success.",
+    "Great achievements begin with small steps.",
+    "Never quit on your dreams.",
+    "Stay curious, keep learning.",
+    "Every challenge makes you stronger.",
+    "Success is a series of small wins.",
+    "Your effort matters.",
+    "Every page you read brings you closer to success.",
+    "Learn with passion.",
+    "Believe, achieve, repeat.",
+    "Keep improving every single day.",
+    "Your only competition is yesterday's you.",
+    "Knowledge opens every door.",
+    "One more hour of effort can change everything.",
+    "Winners never stop learning.",
+    "The harder you work, the luckier you become.",
+    "Stay dedicated to your purpose.",
+    "Make discipline your lifestyle.",
+    "Success begins outside your comfort zone.",
+    "The secret to success is consistency.",
+    "Invest in your mind every day.",
+    "Every study session brings you closer to your goals.",
+    "Your dreams deserve your effort.",
+    "The best project you'll ever work on is yourself.",
+    "Stay focused, stay determined.",
+    "Growth happens one day at a time.",
+    "Keep chasing excellence.",
+    "Believe in the process.",
+    "Your journey has just begun."
+]
+    return random.choice(quotes)
+
+def dashboard():
+    global current_user
+    load=load_Settings(current_user)
+    dat=datetime.now().date()
+    today=datetime.now().date()
+    print(f"""\n{Fore.BLUE}╔════════════════════════════════════════════════════════════════════╗
+║                   🎓 AI STUDENT ASSISTANT                         ║
+║                     Productivity Dashboard                        ║
+╚════════════════════════════════════════════════════════════════════╝""")
+    ti=datetime.now().time().strftime("%H:%M")
+    if ti>'12:00':
+        greet="👋 Good Afternoon"
+    elif ti>'17:00':
+        greet="🌙 Good Evening"
+    elif ti<'12:00':
+        greet="☕ Good Morning"
+    print(f"{Fore.YELLOW}{greet}, {Fore.WHITE}{load[0]['display_name']}!")
+    print(f"{Fore.YELLOW}📅 Date : {Fore.WHITE}{dat.strftime('%A, %B %d, %Y')}    {Fore.YELLOW}🕒 Time: {Fore.WHITE}{ti}\n")
+    print(f"═══════════════════════════════════════════════════════════════════════\n")
+    print(f"📊 STUDY PROGRESS")
+    print(f"{Fore.YELLOW}Today's goal: {Fore.WHITE}{view_goal(current_user)} Minutes ")
+    load_stud=load_study_history(current_user)
+    today_study_time=0
+    for study in load_stud:
+        if study['date']==today.strftime("%d/%m/%Y"):
+            today_study_time+=study['duration']
+    print(f"{Fore.YELLOW}Studied today: {Fore.WHITE}{today_study_time}")
+    percent=(today_study_time / int(view_goal(current_user))) * 100 if view_goal(current_user) != Fore.RED+"please add goal in productivity features" else 0
+    print(f"{Fore.YELLOW}Progress: {Fore.WHITE}{progress_bar(percent)} {percent:.1f}%\n")
+    print(f"{Fore.YELLOW}Total Study Sessions: {Fore.WHITE}{total_study_sessions(current_user)}")
+    print(f"{Fore.YELLOW}Total Study Time: {Fore.WHITE}{total_study_time(current_user)} minutes\n")
+    
+    
 
   
+    # if pending_assignments()<1:
+    #     print(f"{Fore.GREEN}Great job! You have no pending assignments.")
+    # elif pending_assignments()==total_assignments_count():
+    #     print(f"{Fore.RED}You have a lot of pending assignments. Try to complete them soon!")
+    print(f"═══════════════════════════════════════════════════════════════════════\n")
+    print(f"📋 ASSIGNMENT TRACKING")
+    print(f"{Fore.YELLOW}Pending Assignments: {Fore.WHITE}{pending_assignments(current_user)}")
+    print(f"{Fore.GREEN}Completed Assignments: {Fore.WHITE}{completed_assignments(current_user)}")
+    print(f"{Fore.RED}Overdue Assignments: {Fore.WHITE}{overdue_count(current_user)}")
+
+    completion_rate= (completed_assignments(current_user) / total_assignments_count(current_user) * 100) if total_assignments_count(current_user) > 0 else 0
+    print(f"{Fore.CYAN}Assignment Completion Rate: {Fore.WHITE}{completion_rate}%")
+    if completion_rate>=80:
+        print(Fore.GREEN+"Excellent work! Your assignment completion rate is high.")
+    print(f"═══════════════════════════════════════════════════════════════════════\n")
+    print(f"📝 TASK MANAGEMENT")
+    print(f"{Fore.YELLOW}Total Tasks: {Fore.WHITE}{total_tasks(current_user)} ")
+    print(f"{Fore.YELLOW}Completed Tasks: {Fore.WHITE}{completed_tasks(current_user)} ")
+    print(f"{Fore.YELLOW}Pending Tasks: {Fore.WHITE}{pending_tasks(current_user)} ")
+    print(f"{Fore.YELLOW}High priority tasks: {Fore.WHITE}{high_priority_tasks(current_user)} 🔴 ")
+    print(f"{Fore.YELLOW}Medium priority tasks: {Fore.WHITE}{medium_priority_tasks(current_user)} 🟡 ")
+    print(f"{Fore.YELLOW}low priority tasks: {Fore.WHITE}{low_priority_tasks(current_user)} 🟢 ")
+    task_completion_rate=(completed_tasks(current_user)/total_tasks(current_user))*100
+    if task_completion_rate<=40:
+        print(Fore.RED+"You have lots of pending assignments")
+    elif task_completion_rate>40 and task_completion_rate<=69:
+        print(Fore.YELLOW+"You're making progress")
+    elif task_completion_rate>69 and task_completion_rate<=85:
+        print(Fore.BLUE+"Great consistency 💫")
+    elif task_completion_rate>=85 and task_completion_rate<=100:
+        print(Fore.GREEN+"Excellent!, you're completing almost every task✅")
+    print(f"═══════════════════════════════════════════════════════════════════════\n")
+    print(f"📈 PRODUCTIVITY SCORE")
+    print(f"{Fore.YELLOW}Current Streak: {Fore.WHITE} {view_streak(current_user)} days")
+    print(f"{Fore.YELLOW}Badges Earned: {Fore.WHITE}{', '.join(get_badges(current_user)) if get_badges(current_user) else 'No badges earned yet'}")
+    print(f"{Fore.YELLOW}Pomodoro sessions completed: {Fore.WHITE}{load_pomodoro(current_user)[0]['pomodoro']}")
+    print(f"{Fore.YELLOW}Productivity score: {Fore.WHITE}{productivity_score(current_user)}")
+    print(f"═══════════════════════════════════════════════════════════════════════\n")
+    print(f"💡  RECOMMENDATIONS")
+    recommendation(current_user)
+
+    print(f"═══════════════════════════════════════════════════════════════════════\n")
+    print(f"🌟 MOTIVATIONAL QUOTE")
+    print(f"{Fore.WHITE}'{Fore.YELLOW}{motivational_quotes()}{Fore.WHITE}'")
+
+dashboard()
+
+
+
 def start_assistant():
    global current_user
 
@@ -898,18 +1611,22 @@ def start_assistant():
         print(f"{Fore.MAGENTA}2. Notes")
         print(f"{Fore.MAGENTA}3. View study history")
         print(f"{Fore.MAGENTA}4. Assignments")
-        print(f"{Fore.MAGENTA}5. Dashboard")
-        print(f"{Fore.MAGENTA}6. Alerts")
-        print(f"{Fore.MAGENTA}7. Export Data")
-        print(f"{Fore.MAGENTA}8. Settings")
-        print(f"{Fore.MAGENTA}9. Search")
-        print(f"{Fore.MAGENTA}10. Productivity features")
-        print(f"{Fore.MAGENTA}11. Insights")
-        print(f"{Fore.MAGENTA}12. Analytics")
-        print(f"{Fore.MAGENTA}13. View achievements")
-        print(f"{Fore.MAGENTA}14. View Profile")
-        print(f"{Fore.MAGENTA}15. Logout")
-        print(f"{Fore.RED}16. Exit")
+        print(f"{Fore.MAGENTA}5. Tasks")
+        print(f"{Fore.MAGENTA}6. Dashboard")
+        print(f"{Fore.MAGENTA}7. Alerts")
+        print(f"{Fore.MAGENTA}8. Export Data")
+        print(f"{Fore.MAGENTA}9. Import Data")
+
+        print(f"{Fore.MAGENTA}10. Settings")
+        print(f"{Fore.MAGENTA}11. Search")
+        print(f"{Fore.MAGENTA}12. Productivity features")
+        print(f"{Fore.MAGENTA}13. Insights")
+        print(f"{Fore.MAGENTA}14. Reports")
+        print(f"{Fore.MAGENTA}15. View achievements")
+        print(f"{Fore.MAGENTA}16. View Profile")
+        print(f"{Fore.MAGENTA}17. Backup System")
+        print(f"{Fore.MAGENTA}18. Logout")
+        print(f"{Fore.RED}19. Exit")
         choice=input(Fore.CYAN+"Enter choice")
         if choice=='1':
             study_timer(current_user)
@@ -920,32 +1637,35 @@ def start_assistant():
         elif choice=='4':
             assignment_menu()
         elif choice=='5':
-            dashboard()
+            tasks(current_user)
         elif choice=='6':
-            alerts_menu()
+            dashboard()
         elif choice=='7':
-            export_menu()
+            alerts_menu()
         elif choice=='8':
+            export_menu()
+        elif choice=='10':
             result=setting_menu()
             if result=="logout":
                 return                
-        elif choice=='9':
+        elif choice=='11':
             search_menu()
-        elif choice=='10':
-            productivity_menu()
-        elif choice=='11' :
-            insights_menu()
         elif choice=='12':
-            analytics_menu()
-        elif choice=='13':
-            achievements()
+            productivity_menu()
+        elif choice=='13' :
+            insights_menu()
         elif choice=='14':
-            profile()
-            
+            reports_menu()
         elif choice=='15':
-            logout()
-            break
+            achievements()
         elif choice=='16':
+            profile()
+        elif choice=='17':
+            backup_menu()
+            break
+        elif choice=='18':
+           logout()
+        elif choice=='19':
             print(Fore.BLUE+"Exiting student assistant...")
             return False
         else:

@@ -125,7 +125,94 @@ def load_streaks(current_username):
         with open(f"data/{current_username}/streak.json",'r') as file:
             return json.load(file)
 
+def load_Settings(current_username):
+    path=f"data/{current_username}/settings.json"
+    if not os.path.exists(path):
+        settings=[{
+            'display_name':current_username,
+            'default_study_timer':30,
+            'pomodoro':25,
+            'break_time':5,
+            'show_notifications':True
+        }]
+        with open(path,'w') as file:
+            json.dump(settings,file,indent=4)
+        return settings
+    with open(path,'r') as f:
+        return json.load(f)
+def save_settings(current_username,settings):
+    path=f"data/{current_username}/settings.json"
+    with open(path,'w'):
+        json.dump(settings,path,indent=4)
 
+def total_tasks(current_username):
+    load=load_tasks(current_username)
+    return len(load)
+def completed_tasks(current_username):
+    load=load_tasks(current_username)
+    total=0
+    for task in load:
+        if task['Completed']:
+            total+=1
+    return total 
+def pending_tasks(current_username):
+    total=0
+    load=load_tasks(current_username)
+    for task in load:
+        if not task['Completed']:
+            total+=1
+    return total
+def high_priority_tasks(current_username):
+    total=0
+    load=load_tasks(current_username)
+    for task in load:
+        if task["Priority"]=='high':
+            total+=1
+    return total
+    
+def low_priority_tasks(current_username):
+    total=0
+    load=load_tasks(current_username)
+    for task in load:
+        if task['Priority'].lower()=='low':
+            total+=1
+    return total
+    
+def medium_priority_tasks(current_username):
+    total=0
+    load=load_tasks(current_username)
+    for task in load:
+        if task['Priority'].lower()=='medium':
+            total+=1
+    return total
+def highprior_andnotcompleted(current_username):
+    load=load_tasks(current_username)
+    count=0
+    for task in load:
+        if not task['Completed'] and task['Priority'].lower()=='high':
+            count+=1
+    return count
+def nothighandnotcompleted(current_username):
+    load=load_tasks(current_username)
+    count=0
+    for task in load:
+        if not task['Completed'] and task["Priority"].lower()=='high':
+            count+=1
+    count=pending_tasks(current_username)-count
+    return count
+
+
+
+
+
+
+
+
+
+
+
+    
+    
 
 
 
