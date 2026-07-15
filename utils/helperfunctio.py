@@ -201,7 +201,18 @@ def nothighandnotcompleted(current_username):
     count=pending_tasks(current_username)-count
     return count
 
-
+def load_activity(current_username):
+    try:
+        with open(f'data/{current_username}/activity.json','r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        print(FileNotFoundError)
+def save_activity(activity,current_username):
+    try: 
+        with open(f"data/{current_username}/activity.json",'w') as file:
+            json.dump(activity,file,indent=4)
+    except FileNotFoundError:
+        print(FileNotFoundError)
 
 
 

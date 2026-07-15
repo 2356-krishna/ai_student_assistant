@@ -6,7 +6,7 @@ from colorama import Fore,init
 from utils.helperfunctio import load_study_history,save_study_session,load_notes,save_note
 from utils.helperfunctio import load_assignment,save_assignment
 from utils.helperfunctio import total_study_sessions,total_study_time,total_notes_count,total_assignments_count,pending_assignments,completed_assignments
-from utils.helperfunctio import load_users,save_users,save_goals,load_goals,save_pomodoro,load_pomodoro,load_streaks,save_streak,load_tasks,save_tasks
+from utils.helperfunctio import load_users,save_users,save_goals,load_goals,save_pomodoro,load_pomodoro,load_streaks,save_streak,load_tasks,save_tasks,load_activity,save_activity
 from utils.helperfunctio import high_priority_tasks,low_priority_tasks,medium_priority_tasks,total_tasks,completed_tasks,pending_tasks,highprior_andnotcompleted,nothighandnotcompleted
 from datetime import datetime,timedelta
 import matplotlib.pyplot as plt
@@ -19,81 +19,25 @@ from openpyxl import Workbook
 import zipfile
 from utils.helperfunctio import load_Settings,save_settings
 init(autoreset=True)
-current_user='krishna'
+current_user=None
 def pasrse_date(date_string):
     return datetime.strptime(date_string,"%d/%m/%Y")
 
 
 
-def update_streaks(current_username):
-     load=load_streaks(current_username)
-     print(load)
-     today=datetime.now().date()
-     strintime=today.strftime('%d/%m/%Y')
-     yesterday=today-timedelta(days=1)
-     yesterdaystrin=yesterday.strftime("%d/%m/%Y")
-     if load[0]['yesterday']==yesterdaystrin or load[0]['yesterday']=="":
-         load[0]['streaks']+=1
-         load[0]['yesterday']=strintime
-         save_streak(current_username,load)
-def view_streak(current_username):
-    load=load_streaks(current_username)
-    return load[0]['streaks']
-def get_badges(current_username):
-    badges=[]
-    history=load_study_history(current_username)
-    session=len(history)
-    if session>=5:
-        badges.append("🥉Beginner Level💫")
-    if session>=25:
-        badges.append("🥈Consistent student✅")
-    if session>=100:
-        badges.append("🥇Master study ✅💪")
-    return badges
-def view_badges(current_username):
-    badge=get_badges(current_username)
-    print(Fore.BLUE+"======== Achievements🏅 ========")
-    if not badge:
-        print(Fore.RED+"Badges not earned yet")
 
-    for badges in badge:
-        print(badges)
 
-def weekly_report(current_username):
-    history=load_study_history(current_username)
-    sessions=0
-    min=0
-    today=datetime.now().date()
-    daybefweek=today-timedelta(days=7)
-    strdaybef=daybefweek.strftime("%d/%m/%Y")
-    for his in history:
-       if his['date']>strdaybef:
-        min+=his['duration']
-        sessions+=1
-    print(Fore.BLUE+"====== Weekly report ======")
-    print(f"{Fore.YELLOW}Total sessions :{sessions}")
-    print(f"Study time: {min}mins")
-def achievements():
-    global current_user
-    while(True):
-        print(Fore.MAGENTA+"1. View badges")
-        print(Fore.MAGENTA+"2. Weekly report")
-        print(Fore.MAGENTA+"3. Back")
-        choice=input(Fore.CYAN+"Enter your choice")
-        if choice=='1':
-            view_badges(current_user)
-        elif choice=='2':
-            weekly_report(current_user)
-        elif choice=="3":
-            break
-        else:
-            print(f"{Fore.RED}Invalid choice")
 def study_timer(current_username):
     load=load_Settings(current_username)
-    minutes=int(input(Fore.CYAN+"Enter how many minutes you want to study or press enter to default for default_study_time : "))
-    if minutes=="":
+    while(True):
+     try:
+      minutes=int(input(Fore.CYAN+"Enter how many minutes you want to study or press 0 to use  default study time : "))
+      break
+     except ValueError:
+        print(Fore.RED+"Invalid input, press 0 to use default study time")
+    if minutes==0:
         minutes=load[0]['default_study_timer']
-    print(f"{Fore.CYAN}study session started for {minutes} minutes")
+    print(f"{Fore.YELLOW}study session started for {minutes} minutes")
     time.sleep(minutes)
     print(Fore.GREEN+"congratulations !")
     print(Fore.GREEN+f"you have completed your study session {minutes} minutes")
@@ -115,7 +59,13 @@ def study_timer(current_username):
         "duration":minutes,
         "date":strtime
     })
-    
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"📚 Started study session"
+    })
+    save_activity(load_act,current_username)
     
     
     save_study_session(history,current_username)
@@ -128,14 +78,29 @@ def view_study_history(current_username):
     print(f"\n{Fore.BLUE}===== STUDY HISTORY =====")
     for i, session in enumerate(history,start=1):
         print(f"{i}. {session["duration"]} minutes")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"⭐ Viewed study history"
+    })
+    save_activity(load_act,current_username)
 
 
 
 
 def add_assignment(current_username):
     assignments=load_assignment(current_username)
-    title=input(Fore.CYAN+"enter asssignment title")
-    due_date=input(Fore.CYAN+"enter due date of assignment (YYYY-MM-DD)")
+    title=input(Fore.CYAN+"enter asssignment title : ")
+    while(True):
+     due_date=input(Fore.CYAN+"enter due date of assignment (DD/MM/YYYY) : ")
+     
+     try:
+        datetime.strptime(due_date,"%d/%m/%Y")
+        break
+     except ValueError:
+        print(f"{due_date} invalid format ")
+
     
     assignments.append({
         "title":title,
@@ -143,6 +108,14 @@ def add_assignment(current_username):
         "completed":False
     })
     save_assignment(assignments,current_username)
+    print(f"{Fore.GREEN} assignment added successfully")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"➕ Added {title} assignment"
+    })
+    save_activity(load_act,current_username)
 def view_assignment(current_username):
     assignments=load_assignment(current_username)
     if not assignments:
@@ -152,37 +125,98 @@ def view_assignment(current_username):
     for i,assignment in enumerate(assignments,start=1):
         status="completed✅" if assignment["completed"] else "pending❌"
         print(f"{i}. {assignment['title']} | DUE:{assignment['due_date']} | STATUS:{status}")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"⭐ Viewed assignments"
+    })
+    save_activity(load_act,current_username)
+# def view_not_completed_assignments(current_username):
+#     assignments=load_assignment(current_username)
+#     if not assignments:
+#         print("no assignment found")
+#         return
+#     print(f"\n{Fore.BLUE}===== NOT COMPLETED ASSIGNMENTS =====")
+#     for i,assignment in enumerate(assignments,start=1):
+#         if not assignment["completed"]:
+#             status="pending❌"
+#             print(f"{i}. {assignment['title']} | DUE:{assignment['due_date']} | STATUS:{status}")
 def mark_complete(current_username):
     assignments=load_assignment(current_username)
     if not assignments:
         print("no assignment found")
         return
     view_assignment(current_username)
-    try: 
-        num=int(input(Fore.CYAN+"Enter number which assignment you want to mark as completed"))
+    while(True):
+     try: 
+        num=int(input(Fore.CYAN+"Enter number which assignment you want to mark as completed : "))
         if num>=1 and num<=len(assignments):
             assignments[num-1]["completed"]=True
             save_assignment(assignments,current_username)
+            break
         else:
             print("invalid number")
-    except ValueError:
+        
+     except ValueError:
         print("invalid number") 
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"☑️ Completed assignment {assignments[num-1]['title']}"
+    })
+    save_activity(load_act,current_username)
+    # while(True):    
+    #     verify=input(Fore.RED+"Are you sure you want to mark this assignment as completed? (yes/no): ")
+    
+    #     if verify.lower()=='yes':
+    #         print("assignment marked as completed")
+    #         break
+    #     elif verify.lower()=='no':
+    #         print("marking cancelled")
+    #         return
+    #     else:
+    #         print("invalid choice")
+    
+     
 def delete_Assignment(current_username):
     assignments=load_assignment(current_username)
     if not assignments:
         print("no assignments found")
         return
     view_assignment(current_username)
-    try:
+
+    while(True):
+     try:
         num=int(input(Fore.CYAN+"Enter number which assignment you want to delete : "))
-        if num>=1 and num<=len(assignments):
-            assignments.pop(num-1)
-            save_assignment(assignments,current_username)
-            print("assignment deleted")
-        else:
-            print("invalid number")
-    except ValueError:
+        break
+     except ValueError:
         print("invalid number")
+    while(True):
+      verify=input(Fore.RED+"Are you sure you want to delete this assignment? (yes/no): ")
+      if verify.lower()=='yes':
+            if num>=1 and num<=len(assignments) and verify.lower()=='yes':
+                assignments.pop(num-1)
+                save_assignment(assignments,current_username)
+                print("assignment deleted")
+                break
+      elif verify.lower()=='no':
+            print("deletion cancelled")
+            return
+      else:
+            print("invalid choice")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"✔️ Deleted {assignments[num-1]['title']} assignment "
+    })
+    save_activity(load_act,current_username)
+
+            
+        
+    
 def assignment_menu():
     global current_user
     while(True):
@@ -217,6 +251,13 @@ def add_note(current_username):
     new_note=input(Fore.CYAN+"enter new note you want to add")
     note.append(new_note)
     save_note(note,current_username)
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"📔 Note Added"
+    })
+    save_activity(load_act,current_username)
 def view_notes(current_username):
     note=load_notes(current_username)
     if not note:
@@ -225,6 +266,14 @@ def view_notes(current_username):
     print(f"\n{Fore.BLUE}===== NOTES =====")
     for i,notes in enumerate(note,start=1):
         print(f"{i}. {notes}")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"⭐ Viewed notes"
+    })
+    save_activity(load_act,current_username)
+    
 def delete_note(current_username):
     note=load_notes(current_username)
     if not note:
@@ -242,6 +291,13 @@ def delete_note(current_username):
         print("invalid note number")
     except ValueError:
         print("invalid number ")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":" 📃 Note Deleted"
+    })
+    save_activity(load_act,current_username)
 def notes_menu():
     global current_user
     while(True):
@@ -266,7 +322,7 @@ def notes_menu():
             break
 
         else:
-            print("Invalid choice.")
+            print(Fore.RED+"Invalid choice.")
 def export_notes(current_username):
             notes=load_notes(current_username)
             with open(f"exports/{current_username}/notes.csv",'w',newline='') as file:
@@ -275,6 +331,13 @@ def export_notes(current_username):
                 for note in notes:
                     writer.writerow([note])
             print(f"{Fore.GREEN} Notes exported successfully to exports/notes.csv")
+            load_act=load_activity(current_username)
+            timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+            load_act.append({
+        "time":timedat,
+        "activity":"📝 Exported notes"
+    })
+            save_activity(load_act,current_username)
 def assignment_export(current_username):
     assignments=load_assignment(current_username)
     with open(f"exports/{current_username}/assignment.csv",'w') as file:
@@ -283,6 +346,13 @@ def assignment_export(current_username):
         for assignment in assignments:
             writer.writerow([assignment['title'],assignment['due_date'],assignment['completed']])
     print(f"{Fore.GREEN} Assignment exported successfully to exports/{current_username}assignment.csv")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"☑️ Assignment Exported"
+    })
+    save_activity(load_act,current_username)
 def export_study_history(current_username):
     history=load_study_history(current_username)
     with open(f"exports/{current_username}/study_history.csv",'w',newline='')as file:
@@ -291,6 +361,13 @@ def export_study_history(current_username):
         for session in history:
             writer.writerow([session['date'],session['duration']])
     print(f"{Fore.GREEN} Study history exported successfully to exports/study_history.csv")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"✔️ Exported Study history"
+    })
+    save_activity(load_act,current_username)
 def export_tasks(current_username):
     load=load_tasks(current_username)
     file=f"exports/{current_username}/tasks.csv"
@@ -300,6 +377,13 @@ def export_tasks(current_username):
        for task in load:
            writer.writerow([task['Title'],task['Priority'],task['Deadline'],task['Completed']])
     print(f"{Fore.GREEN} Tasks exported successfully to exports/{current_username}/study_history.csv")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"☑️ Tasks Exported"
+    })
+    save_activity(load_act,current_username)
 
         
         
@@ -330,7 +414,7 @@ def overdue_count(current_username):
     today=datetime.now().date()
     overdues_count=0
     for assign in load:
-        if pasrse_date(assign['due_date']).date() < today:
+        if pasrse_date(assign['due_date']).date() < today and not assign['completed']:
             overdues_count+=1
     return overdues_count
 
@@ -341,16 +425,40 @@ def set_goals(current_username):
     load.append({"goals":goal})
     save_goals(load,current_username)
     print(Fore.GREEN+"Goal Saved")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":" ➕ Added Goal"
+    })
+    save_activity(load_act,current_username)
 def view_goal(current_username):
     load=load_goals(current_username)
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"⭐ Viewed Goals"
+    })
+    save_activity(load_act,current_username)
     if not load:
-        return Fore.RED+"please add goal in productivity features"
+        return Fore.RED+"please add goal..."
     return int(load[0]['goals'])
+
+
+
 def pomodoro(current_username):
     setting=load_Settings(current_username)
     study_minutes=int(input(Fore.CYAN+"Enter how many minutes you want to study or press enter for default  : ") or setting[0]['pomodoro'])
     break_time=int(input(Fore.CYAN+"Enter how many minutes of break you want  or default 5 : ")or load[0]['break_time'])
     total_seconds=study_minutes
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"Started Pomodoro"
+    })
+    save_activity(load_act,current_username)
     while(total_seconds):
         minutes=total_seconds//60
         sec=total_seconds% 60
@@ -392,6 +500,7 @@ def pomodoro(current_username):
         break_seco-=1
 
     print(f"{Fore.RED} Break over!")
+
     continu=input(Fore.CYAN+"Do you want to continue or exit pomodoro timer Yes or No: ")
     if continu.lower()=='yes':
         pomodoro(current_username)
@@ -415,6 +524,14 @@ def view_progress(current_username):
     print(f"{Fore.YELLOW}Goal:{goa}mins")
     print(f"{Fore.YELLOW}completed :{study_min}mins")
     print(f"{Fore.YELLOW}Progress: {percentage:.1f}%")
+    load_act=load_activity(current_username)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"⭐ Viewed Progress"
+    })
+    save_activity(load_act,current_username)
+    
     if percentage>=100:
         print(f"{Fore.GREEN}Goal achieved!")
 def progress(current_username):
@@ -624,7 +741,7 @@ def create_user_files(username):
         f"data/{username}"
     )
 
-    files=['assignment.json','notes.json','tasks.json','study_history.json','study_goals.json','pomodoro.json','streak.json','badges.json']
+    files=['assignment.json','notes.json','tasks.json','study_history.json','study_goals.json','pomodoro.json','streak.json','badges.json','activity.json']
     expor=['assignment.csv','notes.csv','studyhistory.csv','tasks.csv']
     for file in files:
         with open(f'data/{username}/{file}','w')as fi:
@@ -670,6 +787,13 @@ def login():
             print(Fore.GREEN+"login successfully") 
             setting=load_Settings(current_user)
             print(f"\n{Fore.YELLOW}Welcome : {setting[0]['display_name']}")
+            load_act=load_activity(current_user)
+            timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+            load_act.append({
+        "time":timedat,
+        "activity":"🔗 logined in account"
+    })
+            save_activity(load_act,current_user)
             return True
     print(Fore.RED+"Invalid crendtials")    
     return False   
@@ -691,6 +815,13 @@ def change_password():
             user['password']=new_password
             save_users(load)
             print(f"{Fore.GREEN} Password changed successfully")
+            load_act=load_activity(current_user)
+            timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+            load_act.append({
+        "time":timedat,
+        "activity":"🔐 Changed password"
+    })
+            save_activity(load_act,current_user)
 
 def change_username():
     load=load_users()
@@ -702,10 +833,24 @@ def change_username():
                 return
     for user in load:
        if  user['username']==current_user:
+           os.rename(f"exports/{current_user}",f"exports/{new_username}")
+           os.rename(f"data/{current_user}",f"data/{new_username}")
+           os.rename(f"backups/{current_user}_backup.zip",f"backups/{new_username}_backup.zip")
+
            user['username']=new_username
            save_users(load)
+
            current_user=new_username
+
            print(f"{Fore.GREEN} Username changed successfully")
+           load_act=load_activity(current_user)
+           timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+           load_act.append({
+        "time":timedat,
+        "activity":"☑️ Changed Username"
+    })
+           save_activity(load_act,current_user)
+
 def delete_account():
     global current_user
     load=load_users()
@@ -785,48 +930,109 @@ def setting_menu():
 def add_tasks(current_username):
     load=load_tasks(current_username)
     title=input("Enter title of the task: ")
-    priority=input(Fore.CYAN+"Enter priority of the task high,low ,medium:")
+    while(True):
+     priority=input(Fore.CYAN+"Enter priority of the task high,low ,medium: " + Fore.WHITE)
+     if priority.lower() in ['high','medium','low']:
+        break
+     else:
+         print(Fore.RED+"Invalid priority")
     completed=False
-    deadline=input(Fore.CYAN+'Enter deadline of the task (%d/%m/%y): ')
+    while(True):
+     try:
+      deadline=input(Fore.CYAN+'Enter deadline of the task (%d/%m/%y): ' + Fore.WHITE)
+      datetime.strptime(deadline,"%d/%m/%Y")
+      break
+     except ValueError:
+      print(Fore.RED+"Invalid date format")
+      
     load.append({
         "Title":title,
         "Priority":priority,
         "Completed":completed,
         "Deadline":deadline
     })
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"➕  {title} Task added"
+    })
+    save_activity(load_act,current_user)
     save_tasks(load,current_username)
 def view_tasks(current_username):
     load=load_tasks(current_username)
     for i,tasks in enumerate(load,start=1):
         status="completed✅" if tasks['Completed'] else "Pending"
         print(Fore.YELLOW+f"{i}. Title:{tasks['Title']} \n Priority:{tasks['Priority']} \n {tasks['Deadline']} \n Status:{status}")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"⭐ Viewed tasks"
+    })
+    save_activity(load_act,current_user)
+        
 def delete_tasks(current_username):
     view_tasks(current_username)
     load=load_tasks(current_username)
-    try:
-       choice=int(input(Fore.CYAN+"Enter which task you want to delete " ))
-       if choice>=1 and choice<=len(load):
-         load.pop(choice-1)
-         save_tasks(load,current_username)
-         print(Fore.GREEN+"tasks deleted sucessfully")
-       else:
+
+    while(True):
+      try:
+        choice=int(input(Fore.CYAN+"Enter which task you want to delete " ))
+        
+      except ValueError:
+        print("invalid choice")
+     
+      if choice>=1 and choice<=len(load):
+           verify=input(Fore.RED+"Are you sure you want to delete this task? (yes/no): ")
+           if verify.lower()=='yes':
+             load.pop(choice-1)
+             save_tasks(load,current_username)
+             print(Fore.GREEN+"tasks deleted sucessfully")
+             load_act=load_activity(current_user)
+             timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+             load_act.append({
+        "time":timedat,
+        "activity":f"{load[choice-1]['title']} task deleted"
+    })
+             save_activity(load_act,current_user)
+             break
+    
+           elif verify.lower()=='no':
+             print(Fore.GREEN+"deletion cancelled")
+             break
+           else:
+             print(Fore.RED+"invalid choice")
+      else:
         print(Fore.RED+"invalid choice")
-    except ValueError:
-      print(ValueError)
+        
+           
+     
 def mark(current_username):
     load=load_tasks(current_username)
     if not load:
         print("no tasks found")
+        return
     view_tasks(current_username)
-    try: 
+    while(True):
+     try: 
         choice=int(input(Fore.CYAN+"Enter no which task you to mark as completed : "))
-        if choice>=1 and choice<=len(load):
+     except ValueError:
+        print("invalid choice")
+     if choice>=1 and choice<=len(load):
           load[choice-1]['Completed']=True
           save_tasks(load,current_username)
-        else:
+          load_act=load_activity(current_user)
+          timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+          load_act.append({
+        "time":timedat,
+        "activity":f"✔️  Mark {load[choice-1]['title']} ccompleted"
+    })
+          save_activity(load_act,current_user)
+          break
+     else:
           print("invalid choice")
-    except ValueError:
-        print("invalid choice")
+     
 def filter_task(current_username):
     load=load_tasks(current_username)
     if not load:
@@ -942,7 +1148,7 @@ def productivity_score(current_username):
     score=completed*10+streak[0]['streaks']*5
     return  score
 
-def recommendation(current_username):
+def week_recommendation(current_username):
     load_assignmen=load_assignment(current_username)
     load_study=load_study_history(current_username)
     today=datetime.now().date()
@@ -970,13 +1176,146 @@ def notification(current_username):
     pending=sum(1 for a in load if a['completed'])
     print(Fore.BLUE+"======== Notifications ========")
     print(f"{Fore.RED} You have {highprior_andnotcompleted(current_username)} High Priority pending tasks ")
-    print(f"other pending tasks are : {nothighandnotcompleted(current_username)}")
+    # print(f"other pending tasks are : {nothighandnotcompleted(current_username)}")
+    today=datetime.now().date().strftime("%d/%m/%Y")
+    Today_assign=0
+    load=load_assignment(current_username)
+    for assign in load:
+        if assign['due_date']==today and not assign['completed']:
+            Today_assign+=1
+    if Today_assign>0:
+        print(f"{Fore.RED} You have {Today_assign} assignments due today")
+    overdue=overdue_count(current_username)
+    if overdue>0:
+        print(f"{Fore.RED} You have {overdue} overdue assignments")
+    loadd=load_study_history(current_username)
+    for his in loadd:
+        if his['date']!=today:
+            print(f"{Fore.RED} You have not studied today")
+            break
+
 
     print(f"{Fore.RED} You have {pending} pending assignmemnts")
     Streak=load_streaks(current_username)
     print(f"{Fore.YELLOW} Current streak {Streak[0]['streaks']}")
 
+def study_alerts(current_username):
+     load=load_study_history(current_username)
+     today=datetime.now().date()
+     if not load :
+        #  print(f"{Fore.YELLOW} You have not studied today, please start studying")
+         return True
+     for his in load:
+         if his['date']!=today.strftime("%d/%m/%y"):
+             return True
+     return False
+def smart_alerts(current_username):
+    load=load_assignment(current_username)
+    for assign in load:
+        if assign['due_date']>(datetime.now().date()).strftime("%d/%m/%Y") and not assign['completed']:
+            print(f"{Fore.RED} {assign['title']} assignment is over due")
+        elif assign['due_date']==(datetime.now().date()).strftime("%d/%m/%Y") and not assign['completed']:
+            print(f"{Fore.YELLOW} {assign['title']} is due today")
+    high=highprior_andnotcompleted(current_username)
+    if high>0:
+        print(f"{Fore.RED} You have {high} high priority pending tasks")    
+    if study_alerts(current_username):
+        print(f"{Fore.RED} You have not studied today, please start studying")
+
+def recommendation(current_username):
+    load=load_assignment(current_username)
+    today=datetime.now().date()
+    first_assign=[]
+    second_assign=[]
+    one_day_due_assign=[]
+    first_task=[]
+    second_task=[]
+    one_day_due_task=[]
+    print(f"{Fore.BLUE} ====== Recommendations 💫 ======")
+    if load:
+     for assign in load:
+        if assign['due_date']<today.strftime("%d/%m/%Y") and not assign['completed']:
+           first_assign.append(assign)
+        elif assign['due_date']==today.strftime("%d/%m/%Y") and not assign['completed']:
+          second_assign.append(assign)
+        elif assign['due_date']==(today+timedelta(days=1)).strftime("%d/%m/%Y") and not assign['completed']:
+            one_day_due_assign.append(assign)
+        
+    else:
+        print(Fore.RED+"No Assignments added found")
+        
+    tasks=load_tasks(current_username)
+
+    for task in tasks:
+
+        if task['Priority'].lower()=='high' and not task['Completed'] and task['Deadline']<today.strftime("%d/%m/%Y"):
+            first_task.append(task)
+        if task['Priority'].lower()=='medium' and not task['Completed'] and task['Deadline']<today.strftime("%d/%m/%Y"):  
+            first_task.append(task)
+        # elif task['Priority'].lower()=='low' and not task['Completed'] and task['Deadline']<today.strftime("%d/%m/%Y"):
+            # first_task.append(task)
+        if task['Priority'].lower()=='high' and not task['Completed'] and task['Deadline']==today.strftime("%d/%m/%Y"):
+            second_task.append(task)
+        if task['Priority'].lower()=='medium' and not task['Completed'] and task['Deadline']==today.strftime("%d/%m/%Y"):  
+            second_task.append(task)
+        # elif task['Priority'].lower()=='low' and not task['Completed'] and task['Deadline']==today.strftime("%d/%m/%Y"):
+            # second_task.append(task)
+        if task['Priority'].lower()=='high' and not task['Completed'] and task['Deadline']==(today+timedelta(days=1)).strftime("%d/%m/%Y"):
+            one_day_due_task.append(task)
+        if task['Priority'].lower()=='medium' and not task['Completed'] and task['Deadline']==(today+timedelta(days=1)).strftime("%d/%m/%Y"):  
+            one_day_due_task.append(task)
+        # elif task['Priority'].lower()=='low' and not task['Completed'] and task['Deadline']==(today+timedelta(days=1)).strftime("%d/%m/%Y"):
+            # one_day_due_task.append(task)
+    st=0
+    if first_assign:
+     for i,assign in enumerate(first_assign,start=1):
+        print(f"{Fore.RED}{i}. Do {assign['title']} assignment is overdue")
+        st+=1
+    if first_task:
+     for i,task in enumerate(first_task,start=st):
+        print(f"{Fore.YELLOW}{i}. Do {task['Title']} because it is {task['Priority']} Priority and overdue")
+        st+=1
+    if second_assign:
+     for i,assign in enumerate(second_assign,start=st):
+        print(f"{Fore.YELLOW}{i}. Do {assign['title']} assignment is due today")
+        st+=1
+    if second_task:
+     for i,task in enumerate(second_task,start=st):
+        print(f"{Fore.YELLOW}{i}. Do {task['Title']} because it is {task['Priority']} Priority and due today")
+        st+=1
+    if one_day_due_assign:
+     for i,assign in enumerate(one_day_due_assign,start=st):
+        print(f"{Fore.GREEN}{i}. Do {assign['title']} assignment is due tomorrow")
+        st+=1
+    if one_day_due_task:
+     for i,task in enumerate(one_day_due_task,start=st):
+        print(f"{Fore.GREEN}{i}. Do {task['Title']} because it is {task['Priority']} Priority and due tomorrow")
+        st+=1
+   
+    load_assignmen=load_assignment(current_username)
+    load_study=load_study_history(current_username)
+    today=datetime.now().date()
+    daybef=(today-timedelta(days=4)).strftime("%d/%m/%Y")
+    minutes=0
+    for stud in load_study:
+        if stud['date']>daybef:
+            minutes+=stud['duration']
+    pomo=load_pomodoro(current_username)
+    goals=load_goals(current_username)
+    pending=sum(1 for a  in load_assignmen if not a['completed'])
     
+    if minutes<300:
+        print(Fore.YELLOW+"📊 Increase study time this week")
+    if pending>5:
+        print(Fore.RED+"⚠️  You have many pening assignments")
+    if not goals:
+        print(Fore.YELLOW+"You have no study goals please add goals ")
+    if  not pomo:
+        print(Fore.YELLOW+"You have no pomodoro sessins, please do to increase your study time")
+    elif pomo[0]['pomodoro']<5:
+        print(Fore.YELLOW+"You have less pomodoro sessins, please do to increase your study time")
+# recommendation(current_user)
+     
             
 def weekly_summary(current_username):
     load_assignmen=load_assignment(current_username)
@@ -1161,7 +1500,14 @@ def pdf_Report(current_username):
     content.append(Spacer(1,12))
     
     pdf.build(content)
-    print(Fore.GREEN+"Pdf Report Generated")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"Pdf report generated"
+    })
+    save_activity(load_act,current_user)
+    print(Fore.GREEN+"📑 Pdf Report Generated")
     print(f"Saved at : {file_path}")
     
     
@@ -1173,6 +1519,13 @@ def import_tasks(current_username):
             load.append(row)
     save_tasks(load,current_username)
     print(Fore.GREEN+"Tasks imported sucessfully")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"📃 Tasks Imported"
+    })
+    save_activity(load_act,current_user)
 
 def import_notes(current_username):
     load=[]
@@ -1182,6 +1535,13 @@ def import_notes(current_username):
             load.append(note)
     save_note(load,current_username)
     print(Fore.GREEN+"Notes imported sucessfully")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"🗒️ Notes imported"
+    })
+    save_activity(load_act,current_user)
 
 def import_assignments(current_username):
     load=[]
@@ -1191,6 +1551,13 @@ def import_assignments(current_username):
             load.append(assign)
     save_assignment(load,current_username)
     print(Fore.GREEN+"assignment imported sucessfully")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"📝 Assignments imported"
+    })
+    save_activity(load_act,current_user)
 
 def import_study(current_username):
     load=[]
@@ -1200,6 +1567,13 @@ def import_study(current_username):
             load.append(study)
     save_study_session(load,current_username)
     print(Fore.GREEN+"Study imported sucessfully")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"📔 Study history imported"
+    })
+    save_activity(load_act,current_user)
 def import_menu():
     global current_user
     while(True):
@@ -1268,6 +1642,13 @@ def study_graph(current_username):
     plt.grid(True)
     plt.savefig(f"data/{current_username}/study_graph.png")
     print(f"Study graph  uploaded in data/{current_username}/study_graph.png")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"💹 Study graph uploaded"
+    })
+    save_activity(load_act,current_user)
 # study_graph()
 def assignment_chart(current_username):
     
@@ -1284,6 +1665,13 @@ def assignment_chart(current_username):
     # plt.show()
     plt.savefig(f"data/{current_username}/assignment_chart.png")
     print(f"Assignment chart uploaded in data/{current_username}/assignment_chart.png")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"📝 Uploaded assignment chart"
+    })
+    save_activity(load_act,current_user)
 
 
 
@@ -1348,6 +1736,13 @@ def excel(current_username):
 
     wb.save(file_path)
     print(Fore.GREEN+"Excel report Generated ✅")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":"📃 Excel report generated"
+    })
+    save_activity(load_act,current_user)
 def reports_menu():
    global current_user
    while(True):
@@ -1382,6 +1777,13 @@ def create_backup(current_username):
             arcname=os.path.relpath(path,source_folder)
             zipf.write(path,arcname)
     print(Fore.GREEN+"backup created succesfully")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"📦 Backup created"
+    })
+    save_activity(load_act,current_user)
 def restore_backup(current_username):
     target_file=f"data/{current_username}"
     backup_file=f"backups/{current_username}_backup.zip"
@@ -1391,6 +1793,13 @@ def restore_backup(current_username):
     with zipfile.ZipFile(backup_file,'r') as zipf:
         zipf.extractall(target_file)
     print(Fore.GREEN+"backup restored")
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    load_act.append({
+        "time":timedat,
+        "activity":f"📦  Backup restored"
+    })
+    save_activity(load_act,current_user)
 def backup_menu():
     global current_user
     print(Fore.BLUE+"======== BACKUP SYSTEM ========")
@@ -1514,7 +1923,267 @@ def motivational_quotes():
     "Your journey has just begun."
 ]
     return random.choice(quotes)
+def update_streaks(current_username):
+     load=load_streaks(current_username)
+     print(load)
+     today=datetime.now().date()
+     strintime=today.strftime('%d/%m/%Y')
+     yesterday=today-timedelta(days=1)
+     yesterdaystrin=yesterday.strftime("%d/%m/%Y")
+     if load[0]['yesterday']==yesterdaystrin or load[0]['yesterday']=="":
+         load[0]['streaks']+=1
+         load[0]['yesterday']=strintime
+         save_streak(current_username,load)
+def view_streak(current_username):
+    load=load_streaks(current_username)
+    return load[0]['streaks']
+def get_badges(current_username):
+    badges=[]
+    history=load_study_history(current_username)
+    session=len(history)
+    load_act=load_activity(current_user)
+    timedat=datetime.now().strftime('%d/%m/%Y, %H:%M')
+    if session>=5:
+        badges.append("🥉Beginner Level💫")
+        
+        load_act.append({
+        "time":timedat,
+        "activity":f"Achieved 🥉Beginner Level💫 badge"
+    })
+        save_activity(load_act,current_user)
+    if session>=25:
+        badges.append("🥈Consistent student✅")
+        load_act.append({
+        "time":timedat,
+        "activity":f"Achieved 🥈Consistent student✅ badge"
+    })
+        save_activity(load_act,current_user)
+    if session>=100:
+        badges.append("🥇Master study ✅💪")
+        load_act.append({
+        "time":timedat,
+        "activity":f"Achieved 🥇Master study ✅💪 badge"
+    })
+        save_activity(load_act,current_user)
 
+    return badges
+def view_badges(current_username):
+    badge=get_badges(current_username)
+    print(Fore.BLUE+"======== Achievements🏅 ========")
+    if not badge:
+        print(Fore.RED+"Badges not earned yet")
+
+    for badges in badge:
+        print(badges)
+
+def weekly_report(current_username):
+    history=load_study_history(current_username)
+    sessions=0
+    min=0
+    today=datetime.now().date()
+    daybefweek=today-timedelta(days=7)
+    strdaybef=daybefweek.strftime("%d/%m/%Y")
+    for his in history:
+       if his['date']>strdaybef:
+        min+=his['duration']
+        sessions+=1
+    print(Fore.BLUE+"====== Weekly report ======")
+    print(f"{Fore.YELLOW}Total sessions :{sessions}")
+    print(f"Study time: {min}mins")
+def achievements():
+    global current_user
+    while(True):
+        print(Fore.MAGENTA+"1. View badges")
+        print(Fore.MAGENTA+"2. Weekly report")
+        print(Fore.MAGENTA+"3. Back")
+        choice=input(Fore.CYAN+"Enter your choice")
+        if choice=='1':
+            view_badges(current_user)
+        elif choice=='2':
+            weekly_report(current_user)
+        elif choice=="3":
+            break
+        else:
+            print(f"{Fore.RED}Invalid choice")
+def recent_activities(current_username):
+    load=load_activity(current_username)
+    today=datetime.now().date().strftime('%d/%m/%Y')
+    
+    start = max(0, len(load) - 5)
+
+    while start < len(load):
+      print(Fore.YELLOW+load[start]['activity'])
+      start += 1
+
+    
+def search_activity(current_username):
+    load=load_activity(current_username)
+    search=input("Enter which activity title or date(DD/MM/YYYY) you want to search : ")
+    for act in load:
+        if search in act['activity'] or search in act['time']:
+            print(f"Time: {act['activity']}\n Activity: {act['activity']}")
+def activity_stats(current_username):
+    load=load_activity(current_username)
+    study_sessions=0
+    viewed_study_history=0
+    added_asssignment=0
+    viewed_assignment=0
+    completed_assignments=0
+    added_note=0
+    deleted_note=0
+    exported_notes=0
+    assignment_exported=0
+    exported_study_history=0
+    tasks_exported=0
+    goals_added=0
+    viewed_goals=0
+    pomodoro=0
+    viewed_progress=0
+    login=0
+    changed_pass=0
+    changed_username=0
+    added_task=0
+    viewed_task=0
+    task_deleted=0
+    pdf_report=0
+    impo_task=0
+    impo_notes=0
+    stud_impo=0
+    study_graph=0
+    assignment_chart=0
+    excel_report=0
+    backup_created=0
+    backup_restored=0
+    for act in load:
+        if act['activity']=='Started study session':
+            study_sessions+=1
+        elif act['activity']=='Viewed study history':
+            viewed_study_history+=1
+        elif 'Added assignment' in act['activity']:
+            added_asssignment+=1
+        elif act['actiity']=='Viewed assignments':
+            viewed_assignment+=1
+        elif "Completed assignment" in act['activity']:
+            completed_assignments+=1
+        elif act['activity']=='Note Added':
+            added_note+=1
+        elif act['activity']=='Note Deleted':
+            deleted_note+=1
+        elif act['activity']=="Exported notes":
+            exported_notes+=1
+        elif act['activity']=="Assignment Exported":
+            assignment_exported+=1
+        elif act['activity']=="Exported Study history":
+            exported_study_history+=1
+        elif act['activity']=="Tasks Exported":
+            tasks_exported+=1
+        elif act['activity']=="Added Goal":
+            goals_added+=1
+        elif act['activity']=="Viewed Goals":
+            viewed_goals+=1
+        elif act['activity']=="Started Pomodoro":
+            pomodoro+=1
+        elif act['activity']=="Viewed Progress":
+            viewed_progress+=1
+        elif act['activity']=="logined in account":
+            login+=1
+        elif act['activity']=="Changed password":
+            changed_pass+=1
+        elif "Task added" in act['activity']:
+            added_task+=1
+        elif act['activity']=="Viewed tasks":
+            viewed_task+=1
+        elif "task deleted" in act['activity']:
+            task_deleted+=1
+        elif act['activity']=="Pdf report generated":
+            pdf_report+=1
+        elif act['activity']=="Tasks Imported":
+            impo_task+=1
+        elif act['activity']=="Notes imported":
+            impo_notes+=1
+        elif act['activity']=="Assignments imported":
+            assign_impo+=1
+        elif act['activity']=="Study history imported":
+            stud_impo+=1
+        elif act['activity']=="Study graph uploaded":
+            study_graph+=1
+        elif act['activity']=="Uploaded assignment chart":
+            assignment_chart+=1
+        elif act['activity']=="Excel report generated":
+            excel_report+=1
+        elif act['activity']=="Backup created":
+            backup_created+=1
+        elif act['activity']=="Backup restored":
+            backup_restored+=1
+        elif act['activity']=="Changed username":
+            changed_username+=1
+    print(f"study sessions :  {study_sessions}")
+    print(f"Viewed study history:   {viewed_study_history}")
+    print(f"Added assignments  :  {added_asssignment}")
+    print(f"Viewed assignments :  {viewed_assignment}")
+    print(f"completed assignments :  {completed_assignments}")
+    print(f"study sessions :  {study_sessions}")
+    print(f"Added notes :  {added_note}")
+    print(f"Deleted notes :  {deleted_note}")
+    print(f"Exported notes :  {exported_notes}")
+    print(f"Assugnment exported :  {assignment_exported}")
+    print(f"Exported study history :  {exported_study_history}")
+    print(f"Tasks exported :  {tasks_exported}")
+    print(f"Goals added :  {goals_added}")
+    print(f"Viewed goals :  {viewed_goals}")
+    print(f"Pomodoro sessions :  {pomodoro}")
+    print(f"viewed progress:  {viewed_progress}")
+    print(f"logined :  {login}")
+    print(f"Changed password :  {changed_pass}")
+    print(f"changed username: {changed_username}")
+    print(f"added task :  {added_task}")
+    print(f"task deleted :  {task_deleted}")
+    print(f"Pdf reports :  {pdf_report}")
+    print(f"import tasks :  {impo_task}")
+    print(f"import notes :  {impo_notes}")
+    print(f"study imports:  {stud_impo}")
+    print(f"Study graphs generated: {study_graph}")
+    print(f"Assignment chart generated: {assignment_chart}")
+    print(f"Excel report generated : {excel_report}")
+    print(f"Backup created: {backup_created}")
+    print(f"Backup restored: {backup_restored}")
+
+def activity_menu():
+    global current_user
+    while(True):
+        print(f"{Fore.MAGENTA}1. Search activity")
+        print(f"{Fore.MAGENTA}2. Check activity statistics")
+        print(f"{Fore.MAGENTA}3. Back")
+        choice=input(Fore.CYAN+"Enter your choice : ")
+        if choice=='1':
+            search_activity(current_user)
+        elif choice=='2':
+            activity_stats(current_user)
+        elif choice=='3':
+            break
+        else:
+            print(Fore.RED+"Invalid choice")
+
+        
+        
+        
+        
+        
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+# recent_activities('krishna')
 def dashboard():
     global current_user
     load=load_Settings(current_user)
@@ -1532,7 +2201,7 @@ def dashboard():
     elif ti<'12:00':
         greet="☕ Good Morning"
     print(f"{Fore.YELLOW}{greet}, {Fore.WHITE}{load[0]['display_name']}!")
-    print(f"{Fore.YELLOW}📅 Date : {Fore.WHITE}{dat.strftime('%A, %B %d, %Y')}    {Fore.YELLOW}🕒 Time: {Fore.WHITE}{ti}\n")
+    print(f"{Fore.YELLOW}📅 Date : {Fore.WHITE}{dat.strftime('%A, %B %d, %Y')}    {Fore.YELLOW}🕒 Time: {Fore.WHITE}{ti}\n{Fore.YELLOW}🔥 Streak: {Fore.WHITE} {view_streak(current_user)} days    {Fore.YELLOW}Productivity score: {Fore.WHITE}{productivity_score(current_user)}")
     print(f"═══════════════════════════════════════════════════════════════════════\n")
     print(f"📊 STUDY PROGRESS")
     print(f"{Fore.YELLOW}Today's goal: {Fore.WHITE}{view_goal(current_user)} Minutes ")
@@ -1542,7 +2211,7 @@ def dashboard():
         if study['date']==today.strftime("%d/%m/%Y"):
             today_study_time+=study['duration']
     print(f"{Fore.YELLOW}Studied today: {Fore.WHITE}{today_study_time}")
-    percent=(today_study_time / int(view_goal(current_user))) * 100 if view_goal(current_user) != Fore.RED+"please add goal in productivity features" else 0
+    percent=(today_study_time / int(view_goal(current_user))) * 100 if view_goal(current_user) != Fore.RED+"please add goal..." else 0
     print(f"{Fore.YELLOW}Progress: {Fore.WHITE}{progress_bar(percent)} {percent:.1f}%\n")
     print(f"{Fore.YELLOW}Total Study Sessions: {Fore.WHITE}{total_study_sessions(current_user)}")
     print(f"{Fore.YELLOW}Total Study Time: {Fore.WHITE}{total_study_time(current_user)} minutes\n")
@@ -1556,46 +2225,62 @@ def dashboard():
     #     print(f"{Fore.RED}You have a lot of pending assignments. Try to complete them soon!")
     print(f"═══════════════════════════════════════════════════════════════════════\n")
     print(f"📋 ASSIGNMENT TRACKING")
+    print(f"{Fore.YELLOW}Total Assignments: {Fore.WHITE}{total_assignments_count(current_user)}")
     print(f"{Fore.YELLOW}Pending Assignments: {Fore.WHITE}{pending_assignments(current_user)}")
     print(f"{Fore.GREEN}Completed Assignments: {Fore.WHITE}{completed_assignments(current_user)}")
     print(f"{Fore.RED}Overdue Assignments: {Fore.WHITE}{overdue_count(current_user)}")
 
     completion_rate= (completed_assignments(current_user) / total_assignments_count(current_user) * 100) if total_assignments_count(current_user) > 0 else 0
-    print(f"{Fore.CYAN}Assignment Completion Rate: {Fore.WHITE}{completion_rate}%")
+    print(f"{Fore.CYAN}Assignment Completion Rate: {progress_bar(completion_rate)} {percent:.1f}%%")
+
     if completion_rate>=80:
         print(Fore.GREEN+"Excellent work! Your assignment completion rate is high.")
     print(f"═══════════════════════════════════════════════════════════════════════\n")
     print(f"📝 TASK MANAGEMENT")
+    total_taskss=total_tasks(current_user)
     print(f"{Fore.YELLOW}Total Tasks: {Fore.WHITE}{total_tasks(current_user)} ")
     print(f"{Fore.YELLOW}Completed Tasks: {Fore.WHITE}{completed_tasks(current_user)} ")
     print(f"{Fore.YELLOW}Pending Tasks: {Fore.WHITE}{pending_tasks(current_user)} ")
     print(f"{Fore.YELLOW}High priority tasks: {Fore.WHITE}{high_priority_tasks(current_user)} 🔴 ")
     print(f"{Fore.YELLOW}Medium priority tasks: {Fore.WHITE}{medium_priority_tasks(current_user)} 🟡 ")
     print(f"{Fore.YELLOW}low priority tasks: {Fore.WHITE}{low_priority_tasks(current_user)} 🟢 ")
-    task_completion_rate=(completed_tasks(current_user)/total_tasks(current_user))*100
-    if task_completion_rate<=40:
+    if total_taskss==0:
+        print(f"{Fore.RED}Tasks not added yet ")
+
+        
+    completed_tas=completed_tasks(current_user)
+    total_task=total_tasks(current_user)
+    if total_task==0:
+        print(Fore.RED+"...")
+    else:
+      task_completion_rate=(completed_tas/total_task)*100
+      if task_completion_rate<=40:
         print(Fore.RED+"You have lots of pending assignments")
-    elif task_completion_rate>40 and task_completion_rate<=69:
+      elif task_completion_rate>40 and task_completion_rate<=69:
         print(Fore.YELLOW+"You're making progress")
-    elif task_completion_rate>69 and task_completion_rate<=85:
+      elif task_completion_rate>69 and task_completion_rate<=85:
         print(Fore.BLUE+"Great consistency 💫")
-    elif task_completion_rate>=85 and task_completion_rate<=100:
+      elif task_completion_rate>=85 and task_completion_rate<=100:
         print(Fore.GREEN+"Excellent!, you're completing almost every task✅")
     print(f"═══════════════════════════════════════════════════════════════════════\n")
-    print(f"📈 PRODUCTIVITY SCORE")
-    print(f"{Fore.YELLOW}Current Streak: {Fore.WHITE} {view_streak(current_user)} days")
+    print(f"📈 PRODUCTIVITY ")
     print(f"{Fore.YELLOW}Badges Earned: {Fore.WHITE}{', '.join(get_badges(current_user)) if get_badges(current_user) else 'No badges earned yet'}")
     print(f"{Fore.YELLOW}Pomodoro sessions completed: {Fore.WHITE}{load_pomodoro(current_user)[0]['pomodoro']}")
     print(f"{Fore.YELLOW}Productivity score: {Fore.WHITE}{productivity_score(current_user)}")
+    print(f"═══════════════════════════════════════════════════════════════════════\n")
+    print(f"Recent Activity")
+    recent_activities(current_user)
+
     print(f"═══════════════════════════════════════════════════════════════════════\n")
     print(f"💡  RECOMMENDATIONS")
     recommendation(current_user)
 
     print(f"═══════════════════════════════════════════════════════════════════════\n")
     print(f"🌟 MOTIVATIONAL QUOTE")
-    print(f"{Fore.WHITE}'{Fore.YELLOW}{motivational_quotes()}{Fore.WHITE}'")
+    print(f"{Fore.WHITE}\"{Fore.YELLOW}{motivational_quotes()}{Fore.WHITE}\"")
+    print("- Anonymous")
 
-dashboard()
+
 
 
 
@@ -1627,7 +2312,7 @@ def start_assistant():
         print(f"{Fore.MAGENTA}17. Backup System")
         print(f"{Fore.MAGENTA}18. Logout")
         print(f"{Fore.RED}19. Exit")
-        choice=input(Fore.CYAN+"Enter choice")
+        choice=input(Fore.CYAN+"Enter choice : ")
         if choice=='1':
             study_timer(current_user)
         elif choice=='2':

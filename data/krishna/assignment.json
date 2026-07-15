@@ -1,62 +1,7 @@
 [
     {
-        "title": "Python OOP Project",
-        "due_date": "10/06/2026",
-        "completed": true
-    },
-    {
-        "title": "Database Management Assignment",
-        "due_date": "15/06/2026",
-        "completed": true
-    },
-    {
-        "title": "Machine Learning Research",
-        "due_date": "20/06/2026",
-        "completed": false
-    },
-    {
-        "title": "Data Structures Practice",
-        "due_date": "22/06/2026",
-        "completed": false
-    },
-    {
-        "title": "Computer Networks Report",
-        "due_date": "25/06/2026",
-        "completed": true
-    },
-    {
-        "title": "Operating Systems Lab",
-        "due_date": "28/06/2026",
-        "completed": false
-    },
-    {
-        "title": "Flask Web Application",
-        "due_date": "30/06/2026",
-        "completed": false
-    },
-    {
-        "title": "Artificial Intelligence Mini Project",
-        "due_date": "05/07/2026",
-        "completed": false
-    },
-    {
-        "title": "Linear Algebra Assignment",
-        "due_date": "08/07/2026",
-        "completed": true
-    },
-    {
-        "title": "Statistics Quiz Preparation",
-        "due_date": "10/07/2026",
-        "completed": false
-    },
-    {
-        "title": "Cloud Computing Report",
+        "title": "python",
         "due_date": "12/07/2026",
-        "completed": false
-    },
-    {
-        "title": "Java Programming Project",
-        "due_date": "15/07/2026",
-        "completed": false
+        "completed": true
     }
 ]
